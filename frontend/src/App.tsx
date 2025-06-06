@@ -73,7 +73,7 @@ const App: React.FC = () => {
 
   const handleSubmit = async () => {
   try {
-    const response = await axios.post("http://localhost:5000/predict", { symptoms: selectedSymptoms });
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/predict`, { symptoms: selectedSymptoms });
     let data = response.data;
     if (!Array.isArray(data)) {
       if (data && typeof data === 'object') {
