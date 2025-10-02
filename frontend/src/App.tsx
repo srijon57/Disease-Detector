@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
 import Header from './header';
 import Footer from './footer';
+
 const symptomsList: string[] = [
   "Fungal infection", "discolored_patches",
   "Allergy", "itching", "skin_rash", "nodal_skin_eruptions", "dischromic_patches",
@@ -55,6 +57,7 @@ const App: React.FC = () => {
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [results, setResults] = useState<DiseasePrediction[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
@@ -72,114 +75,201 @@ const App: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-  try {
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/predict`, { symptoms: selectedSymptoms });
-    let data = response.data;
-    if (!Array.isArray(data)) {
-      if (data && typeof data === 'object') {
-        data = [data]; 
-      } else {
-        data = [];
-      }
+    if (selectedSymptoms.length === 0) {
+      setErrorMessage('Please select at least one symptom.');
+      return;
     }
 
-    if (data.length === 0) {
-      setErrorMessage('No results found for the selected symptom add more.');
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/predict`, { symptoms: selectedSymptoms });
+      let data = response.data;
+      if (!Array.isArray(data)) {
+        if (data && typeof data === 'object') {
+          data = [data];
+        } else {
+          data = [];
+        }
+      }
+      if (data.length === 0) {
+        setErrorMessage('No results found for the selected symptoms. Add more.');
+        setResults([]);
+      } else {
+        setErrorMessage('');
+        setResults(data);
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Error connecting to backend.");
       setResults([]);
-    } else {
-      setErrorMessage('');
-      setResults(data);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error(error);
-    setErrorMessage("Error connecting to backend.");
-    setResults([]);
-  }
-};
+  };
 
   const filteredSymptoms = symptomsList.filter(symptom =>
     symptom.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-    <div className="min-h-screen p-4 bg-gradient-to-br from-gray-900 to-blue-900 text-gray-200">
-      <div className="max-w-2xl mx-auto bg-gradient-to-br from-gray-800 to-gray-700 p-6 rounded-xl shadow-lg">
-        <h1 className="text-3xl font-bold mb-6 text-center text-blue-300">Disease Detector</h1>
-
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search for symptoms..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="w-full p-2 rounded-md bg-gray-700 text-white"
-          />
-          {searchTerm && (
-            <div className="mt-2 max-h-40 overflow-y-auto">
-              {filteredSymptoms.map((symptom, index) => (
-                <div
-                  key={index}
-                  onClick={() => addSymptom(symptom)}
-                  className="cursor-pointer p-2 hover:bg-gray-600 rounded"
-                >
-                  {symptom}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold mb-2 text-blue-200">Selected Symptoms:</h2>
-          <div className="flex flex-wrap gap-2">
-            {selectedSymptoms.map((symptom, index) => (
-              <div key={index} className="bg-blue-600 text-white px-3 py-1 rounded-md flex items-center">
-                {symptom}
-                <button onClick={() => removeSymptom(symptom)} className="ml-2">×</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-blue-600 text-white px-4 py-3 rounded-md mt-4 hover:bg-blue-700 transition-colors shadow-md"
-        >
-          Predict Disease
-        </button>
-
-        {/* Error or No result message */}
-        {errorMessage && (
-          <p className="mt-6 text-center text-red-400">{errorMessage}</p>
-        )}
-
-        {/* Results rendering */}
-        {results.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-2xl font-bold mb-4 text-blue-200">Possible Diseases:</h2>
-            {results.map((r, idx) => (
-              <div key={idx} className="bg-gray-700 border-l-4 border-blue-500 p-4 rounded-md mb-3 shadow-sm">
-                <h3 className="font-semibold text-xl text-blue-300">{r.disease}</h3>
-                <p className="text-sm italic mb-2 text-blue-100">Probability: {r.probability}</p>
-                <p className="text-sm mb-3 text-gray-300">{r.description}</p>
-                <ul className="list-disc list-inside text-sm text-gray-400">
-                  {(r.precautions || [])
-                    .filter(p => typeof p === 'string' && p.trim() !== '')
-                    .map((p, i) => (
-                      <li key={i} className="mb-1">{p}</li>
-                    ))
-                  }
-                </ul>
-              </div>
-            ))}
-          </div>
-        )}
+    <div className="relative flex flex-col min-h-screen bg-gradient-to-br from-zinc-800 via-neutral-800 to-stone-800 overflow-hidden">
+      {/* Animated Background Shapes */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute w-64 h-64 bg-gradient-to-r from-zinc-500/30 to-neutral-500/30 rounded-full animate-float blur-3xl top-10 left-10"></div>
+        <div className="absolute w-96 h-96 bg-gradient-to-r from-neutral-500/30 to-stone-500/30 rounded-full animate-float-slow blur-3xl bottom-20 right-20"></div>
+        <div className="absolute w-48 h-48 bg-gradient-to-r from-stone-500/30 to-zinc-500/30 rounded-full animate-float-fast blur-2xl top-1/3 left-1/4"></div>
       </div>
+      <Header />
+      <main className="flex-grow p-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="max-w-3xl mx-auto bg-zinc-900/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-neutral-700/50"
+        >
+          <h1 className="text-5xl font-extrabold text-center text-neutral-100 mb-8 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-neutral-200 to-stone-400">
+            Disease Detector
+          </h1>
+          
+          {/* Search Input */}
+          <motion.div
+            className="mb-6"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.3 }}
+          >
+            <input
+              type="text"
+              placeholder="Search symptoms..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full p-4 rounded-lg bg-neutral-800/80 text-neutral-100 placeholder-neutral-400 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-stone-400 transition-all duration-300"
+            />
+            <AnimatePresence>
+              {searchTerm && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-2 max-h-48 overflow-y-auto bg-neutral-800/90 rounded-lg border border-neutral-600"
+                >
+                  {filteredSymptoms.map((symptom, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      onClick={() => addSymptom(symptom)}
+                      className="cursor-pointer p-3 hover:bg-gradient-to-r hover:from-neutral-700 hover:to-stone-700 text-neutral-100 rounded-lg transition-colors duration-200"
+                    >
+                      {symptom}
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Selected Symptoms */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold text-neutral-100 mb-3">Selected Symptoms</h2>
+            <div className="flex flex-wrap gap-3">
+              <AnimatePresence>
+                {selectedSymptoms.map((symptom, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-gradient-to-r from-stone-700 to-neutral-700 text-neutral-100 px-4 py-2 rounded-full flex items-center gap-2 shadow-md hover:bg-gradient-to-r hover:from-stone-600 hover:to-neutral-600 transition-all duration-200"
+                  >
+                    {symptom}
+                    <button
+                      onClick={() => removeSymptom(symptom)}
+                      className="text-sm font-bold hover:text-stone-400 transition-colors duration-200"
+                    >
+                      ×
+                    </button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Predict Button */}
+          <motion.button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(168, 162, 158, 0.5)' }}
+            whileTap={{ scale: 0.95 }}
+            className="w-full bg-gradient-to-r from-stone-600 to-neutral-600 text-neutral-100 py-3 rounded-lg font-semibold transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Predicting...' : 'Predict Disease'}
+          </motion.button>
+
+          {/* Spinner */}
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-center mt-6"
+            >
+              <div className="w-10 h-10 border-4 border-stone-400 border-t-transparent rounded-full animate-spin"></div>
+            </motion.div>
+          )}
+
+          {/* Error Message */}
+          {errorMessage && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-6 text-center text-red-400 font-medium"
+            >
+              {errorMessage}
+            </motion.p>
+          )}
+
+          {/* Results */}
+          {results.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="mt-8"
+            >
+              <h2 className="text-3xl font-bold text-neutral-100 mb-6">Possible Diseases</h2>
+              <AnimatePresence>
+                {results.map((r, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.3, delay: idx * 0.1 }}
+                    className="bg-neutral-800/90 border-l-4 border-stone-400 p-6 rounded-lg mb-4 shadow-lg hover:bg-gradient-to-r hover:from-neutral-700/90 hover:to-stone-700/90 transition-all duration-300"
+                  >
+                    <h3 className="text-2xl font-semibold text-stone-300">{r.disease}</h3>
+                    <p className="text-sm text-neutral-400 italic mb-3">Probability: {r.probability}</p>
+                    <p className="text-neutral-200 mb-4">{r.description}</p>
+                    <ul className="list-disc list-inside text-neutral-300 text-sm">
+                      {(r.precautions || [])
+                        .filter(p => typeof p === 'string' && p.trim() !== '')
+                        .map((p, i) => (
+                          <li key={i} className="mb-2">{p}</li>
+                        ))}
+                    </ul>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </motion.div>
+      </main>
+      <Footer />
     </div>
-    <Footer />
-  </div>
   );
 };
 
